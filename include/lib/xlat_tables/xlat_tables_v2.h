@@ -293,6 +293,17 @@ void mmap_add_alloc_va(mmap_region_t *mm);
 
 #if PLAT_XLAT_TABLES_DYNAMIC
 /*
+ * Remap a page with changed attributes, mainly for RMM to access NS memory.
+ */
+void rmm_remap_xlat_table_entry(unsigned long long va_addr, unsigned int attr);
+void rmm_undo_remap_xlat_table_entry(unsigned long long va_addr);
+void remap_l2_block_entry(xlat_ctx_t *ctx, uintptr_t table_base_va,
+		uint64_t va_addr, unsigned int attr);
+void undo_remap_l2_block_entry(xlat_ctx_t *ctx, uintptr_t table_base_va,
+		uint64_t va_addr);
+
+
+/*
  * Add a dynamic region with defined base PA and base VA. This type of region
  * can be added and removed even after the translation tables are initialized.
  *

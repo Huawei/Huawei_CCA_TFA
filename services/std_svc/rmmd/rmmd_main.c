@@ -119,11 +119,6 @@ static void manage_extensions_realm(cpu_context_t *ctx)
 	 * contexts are properly managed.
 	 */
 	sve_enable(ctx);
-#else
-	/*
-	 * Disable SVE and FPU in realm context when it is disabled for NS.
-	 */
-	sve_disable(ctx);
 #endif /* ENABLE_SVE_FOR_NS */
 }
 

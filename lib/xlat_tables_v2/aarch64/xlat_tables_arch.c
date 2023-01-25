@@ -66,6 +66,7 @@ uint32_t xlat_arch_get_pas(uint32_t attr)
 
 	switch (pas) {
 #if ENABLE_RME
+#ifndef IMAGE_RMM
 	/* TTD.NSE = 1 and TTD.NS = 1 for Realm PAS */
 	case MT_REALM:
 		return LOWER_ATTRS(EL3_S1_NSE | NS);
@@ -73,8 +74,12 @@ uint32_t xlat_arch_get_pas(uint32_t attr)
 	case MT_ROOT:
 		return LOWER_ATTRS(EL3_S1_NSE);
 #endif
+#endif
 	case MT_NS:
 		return LOWER_ATTRS(NS);
+	/* For a Block or Page descriptor fetched using the EL2 stage 1 or EL2&0
+	 * stage 1 translation regimes in the Realm Security state, bit 5 is the NS
+	 * field. -- ARM VMSA Manual */
 	default: /* MT_SECURE */
 		return 0U;
 	}

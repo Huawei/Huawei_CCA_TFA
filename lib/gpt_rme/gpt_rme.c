@@ -697,6 +697,12 @@ int gpt_enable(void)
 	tlbipaallos();
 	dsb();
 
+	/*
+	 * SCR_EL3.GPF == 0, GPF at EL0/1/2 is reported synchronously as
+	 * Instruction Abort or Data Abort exception.
+	 */
+	write_scr(read_scr() & ~SCR_GPF_BIT);
+
 	/* Write the base address of the L0 tables into GPTBR */
 	write_gptbr_el3(((gpt_config.plat_gpt_l0_base >> GPTBR_BADDR_VAL_SHIFT)
 			>> GPTBR_BADDR_SHIFT) & GPTBR_BADDR_MASK);
@@ -719,9 +725,8 @@ int gpt_enable(void)
 	gpccr_el3 |= SET_GPCCR_IRGN(GPCCR_IRGN_WB_RA_WA);
 
 	/* Enable GPT */
+	VERBOSE("Enabling GPCCR_EL3\n");
 	gpccr_el3 |= GPCCR_GPC_BIT;
-
-	/* TODO: Configure GPCCR_EL3_GPCP for Fault control. */
 	write_gpccr_el3(gpccr_el3);
 	isb();
 	tlbipaallos();

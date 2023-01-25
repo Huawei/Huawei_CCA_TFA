@@ -23,18 +23,18 @@
 #define PLATFORM_CLUSTER0_CORE_COUNT	PLATFORM_MAX_CPUS_PER_CLUSTER
 #define PLATFORM_CLUSTER1_CORE_COUNT	U(0)
 #else
-#define PLATFORM_MAX_CPUS_PER_CLUSTER	U(4)
+#define PLATFORM_MAX_CPUS_PER_CLUSTER	U(8)
 /*
  * Define the number of cores per cluster used in calculating core position.
  * The cluster number is shifted by this value and added to the core ID,
  * so its value represents log2(cores/cluster).
  * Default is 2**(2) = 4 cores per cluster.
  */
-#define PLATFORM_CPU_PER_CLUSTER_SHIFT	U(2)
+#define PLATFORM_CPU_PER_CLUSTER_SHIFT	U(3)
 
-#define PLATFORM_CLUSTER_COUNT		U(2)
+#define PLATFORM_CLUSTER_COUNT		U(1)
 #define PLATFORM_CLUSTER0_CORE_COUNT	PLATFORM_MAX_CPUS_PER_CLUSTER
-#define PLATFORM_CLUSTER1_CORE_COUNT	PLATFORM_MAX_CPUS_PER_CLUSTER
+#define PLATFORM_CLUSTER1_CORE_COUNT	0 //PLATFORM_MAX_CPUS_PER_CLUSTER
 #endif
 #define PLATFORM_CORE_COUNT		(PLATFORM_CLUSTER0_CORE_COUNT + \
 					 PLATFORM_CLUSTER1_CORE_COUNT)
@@ -82,12 +82,19 @@
 
 #define NS_DRAM0_BASE			ULL(0x40000000)
 #define NS_DRAM0_SIZE			ULL(0xc0000000)
+#define NS_DRAM0_LIMIT          (NS_DRAM0_BASE + NS_DRAM0_SIZE)
 
 #define SEC_SRAM_BASE			0x0e000000
 #define SEC_SRAM_SIZE			0x00060000
 
-#define SEC_DRAM_BASE			0x0e100000
-#define SEC_DRAM_SIZE			0x00f00000
+#define QEMU_L0_GPT_ADDR_BASE       (0x0e060000)
+#define QEMU_L0_GPT_SIZE            (0x1000)
+
+/* #define SEC_DRAM_BASE			0x0e100000 */
+#define QEMU_L1_GPT_ADDR_BASE       (0x0e100000)
+#define QEMU_L1_GPT_SIZE            UL(0x00100000)  /* 1MB */
+#define SEC_DRAM_BASE			0x0e200000
+#define SEC_DRAM_SIZE			0x00e00000
 
 #define SECURE_GPIO_BASE		0x090b0000
 #define SECURE_GPIO_SIZE		0x00001000
@@ -146,10 +153,50 @@
  * Put BL3-1 at the top of the Trusted SRAM. BL31_BASE is calculated using the
  * current BL3-1 debug size plus a little space for growth.
  */
-#define BL31_BASE			(BL31_LIMIT - 0x20000)
+#define BL31_BASE			(BL31_LIMIT - 0x2f000)
 #define BL31_LIMIT			(BL_RAM_BASE + BL_RAM_SIZE)
 #define BL31_PROGBITS_LIMIT		BL1_RW_BASE
 
+#if ENABLE_RME
+#define RMM_BASE		(0x0f000000)
+#define RMM_SIZE        UL(0x100000)
+#define RMM_LIMIT		(RMM_BASE + RMM_SIZE)
+
+#define RMM_CODE_BASE (BL_CODE_BASE)
+#define RMM_CODE_LIMIT (BL_CODE_END)
+#define RMM_CODE_SIZE (RMM_CODE_LIMIT - RMM_CODE_BASE)
+
+#define RMM_RO_DATA_BASE RMM_CODE_LIMIT
+#define RMM_RO_DATA_SIZE (0x1000)
+#define RMM_RO_DATA_LIMIT (RMM_RO_DATA_BASE + RMM_RO_DATA_SIZE)
+
+#define RMM_COHERENT_BASE UL(0x40120000)
+#define RMM_COHERENT_LIMIT UL(0x40120000)
+
+#define QEMU_PAS_1_BASE     (U(0))
+#define QEMU_PAS_1_SIZE     (RMM_BASE)
+#define QEMU_PAS_2_BASE     (RMM_LIMIT)
+#define QEMU_PAS_2_SIZE     (0x40000000 - QEMU_PAS_2_BASE)
+#define QEMU_PAS_REALM_BASE RMM_BASE
+#define QEMU_PAS_REALM_SIZE RMM_SIZE
+
+#define QEMU_PAS1_GPI_ANY    GPT_MAP_REGION_GRANULE(QEMU_PAS_1_BASE, \
+                             QEMU_PAS_1_SIZE, \
+                             GPT_GPI_ANY)
+
+#define QEMU_PAS2_GPI_ANY    GPT_MAP_REGION_GRANULE(QEMU_PAS_2_BASE, \
+                             QEMU_PAS_2_SIZE, \
+                             GPT_GPI_ANY)
+
+#define QEMU_PAS_KERNEL     GPT_MAP_REGION_GRANULE(NS_DRAM0_BASE, \
+                            NS_DRAM0_SIZE, \
+                            GPT_GPI_NS)
+
+#define QEMU_PAS_REALM      GPT_MAP_REGION_GRANULE(QEMU_PAS_REALM_BASE, \
+                            QEMU_PAS_REALM_SIZE, \
+                            GPT_GPI_REALM)
+
+#endif
 
 /*
  * BL3-2 specific defines.
@@ -182,9 +229,15 @@
 #define NS_IMAGE_MAX_SIZE		(NS_DRAM0_SIZE - 0x20000000)
 
 #define PLAT_PHY_ADDR_SPACE_SIZE	(1ULL << 32)
-#define PLAT_VIRT_ADDR_SPACE_SIZE	(1ULL << 32)
-#define MAX_MMAP_REGIONS		11
-#define MAX_XLAT_TABLES			6
+/*
+ * Temporary fix
+ * Set the PLAT_VIRT_ADDR_SPACE_SIZE twice the PLAT_PHY_ADDR_SPACE_SIZE
+ * rmm_read_ns
+ */
+#define PLAT_VIRT_ADDR_SPACE_SIZE	(1ULL << 33)
+#define MAX_MMAP_REGIONS		14
+#define MAX_XLAT_TABLES			7
+#define PLAT_ARM_MMAP_ENTRIES	14
 #define MAX_IO_DEVICES			4
 #define MAX_IO_HANDLES			4
 
@@ -264,6 +317,12 @@
  */
 #define PLAT_QEMU_DT_BASE		NS_DRAM0_BASE
 #define PLAT_QEMU_DT_MAX_SIZE		0x100000
+
+/*
+ * SMMU related constants
+ */
+#define PLAT_QEMU_SMMUV3_BASE          UL(0x09050000)
+#define PLAT_ARM_SMMUV3_ROOT_REG_OFFSET UL(0x20000)
 
 /*
  * System counter

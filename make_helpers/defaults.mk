@@ -114,6 +114,9 @@ ENABLE_PSCI_STAT		:= 0
 # Flag to enable Realm Management Extension (FEAT_RME)
 ENABLE_RME			:= 0
 
+# Flag to relax checks in RMM.
+RME_DEBUG			:= 0
+
 # Flag to enable runtime instrumentation using PMF
 ENABLE_RUNTIME_INSTRUMENTATION	:= 0
 
@@ -460,3 +463,7 @@ ENABLE_TRF_FOR_NS		:= 0
 # SCR_EL3.TWEDEL(4bit) field, when FEAT_TWED is implemented.
 # By default it takes 0, and need to be updated by the platforms.
 TWED_DELAY			:= 0
+
+# For now, the feature of SMMU is not fully implemented in QEMU platform
+# Set this feature when implementing related features
+ENABLE_SMMU			:= 0

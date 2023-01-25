@@ -755,11 +755,7 @@ static int mmap_add_region_check(const xlat_ctx_t *ctx, const mmap_region_t *mm)
 			 * Partial overlaps are not allowed
 			 */
 
-			unsigned long long mm_cursor_end_pa =
-				     mm_cursor->base_pa + mm_cursor->size - 1U;
-
-			bool separated_pa = (end_pa < mm_cursor->base_pa) ||
-				(base_pa > mm_cursor_end_pa);
+			bool separated_pa = true;
 			bool separated_va = (end_va < mm_cursor->base_va) ||
 				(base_va > mm_cursor_end_va);
 
@@ -1181,6 +1177,80 @@ void xlat_setup_dynamic_ctx(xlat_ctx_t *ctx, unsigned long long pa_max,
 	ctx->max_pa = 0;
 	ctx->max_va = 0;
 	ctx->initialized = 0;
+}
+
+void remap_l2_block_entry(xlat_ctx_t *ctx, uintptr_t table_base_va, uint64_t va_addr, unsigned int attr)
+{
+	VERBOSE("remap_l2_block_entry: L2 table base [0x%lx] for virtual address [0x%lx]\n", table_base_va, va_addr);
+	uint64_t new_desc, old_desc, tmp_addr;
+	uint64_t *l2_table_ptr = (uint64_t*)(table_base_va);
+	uint64_t *sub_table;
+	uint64_t start_va_addr, end_va_addr;
+	int l2_table_index = XLAT_TABLE_IDX(va_addr, 2), l3_table_index;
+	unsigned int old_attr;
+
+	sub_table = xlat_table_get_empty(ctx);
+	if(sub_table == NULL){
+		ERROR("Null sub_table\n");
+		assert(0);
+	}
+
+	old_desc = l2_table_ptr[l2_table_index];
+	old_attr = MT_MEMORY | MT_RW | ATTR_INDEX_GET(old_desc);
+
+	//Fill the new map with original attribute including the target entry
+	start_va_addr = va_addr & XLAT_ADDR_MASK(2);
+	end_va_addr = start_va_addr + XLAT_BLOCK_SIZE(2);
+	for(uint64_t cur_addr = start_va_addr; cur_addr < end_va_addr; cur_addr += XLAT_BLOCK_SIZE(3)){
+		tmp_addr = cur_addr & XLAT_ADDR_MASK(3);
+		new_desc = xlat_desc(ctx, old_attr, tmp_addr, 3);
+		l3_table_index = XLAT_TABLE_IDX(cur_addr, 3);
+		sub_table[l3_table_index] = new_desc;
+		xlat_arch_tlbi_va(tmp_addr, ctx->xlat_regime);
+	}
+
+	// reset the target entry with target attribute
+	tmp_addr = va_addr & XLAT_ADDR_MASK(3);
+	new_desc = xlat_desc(ctx, attr, tmp_addr, 3);
+	l3_table_index = XLAT_TABLE_IDX(va_addr, 3);
+	sub_table[l3_table_index] = new_desc;
+	xlat_arch_tlbi_va(tmp_addr, ctx->xlat_regime);
+	xlat_table_inc_regions_count(ctx, sub_table);
+
+	new_desc = (uintptr_t)(sub_table) | TABLE_DESC;
+	l2_table_ptr[l2_table_index] = new_desc;
+}
+
+void undo_remap_l2_block_entry(xlat_ctx_t *ctx, uintptr_t table_base_va, uint64_t va_addr)
+{
+	VERBOSE("undo_remap_l2_block_entry: L2 table base [0x%lx] for virtual address [0x%lx]\n", table_base_va, va_addr);
+	uint64_t new_desc;
+	int l2_table_index = XLAT_TABLE_IDX(va_addr, 2), l3_table_index;
+	uint64_t *l2_table_ptr = (uint64_t*)(table_base_va);
+	uint64_t desc = l2_table_ptr[l2_table_index];
+	uint64_t *sub_table = (uint64_t*)(desc & TABLE_ADDR_MASK);
+	uint64_t start_va_addr, end_va_addr;
+	if((desc & DESC_MASK) != TABLE_DESC){
+		ERROR("Expecting a table descriptor at %p[%d]: 0x%lx\n", l2_table_ptr, l2_table_index, desc);
+		assert(0);
+	}
+	//set the new entry description
+	new_desc = va_addr & XLAT_ADDR_MASK(2);
+	new_desc |= BLOCK_DESC;
+	new_desc |= (MT_MEMORY | MT_REALM | MT_RW) << 5;
+	new_desc |= (UL(1) << XN_SHIFT);
+	VERBOSE("new desc: 0x%lx\n", new_desc);
+	l2_table_ptr[l2_table_index] = new_desc;
+	//Decrease the ref count of the released table and flush all TLB
+	VERBOSE("L2 table address: 0x%llx for 0x%lx\n", desc & TABLE_ADDR_MASK, va_addr);
+	start_va_addr = va_addr & XLAT_ADDR_MASK(2);
+	end_va_addr = start_va_addr + XLAT_BLOCK_SIZE(2);
+	for(uint64_t cur_addr = start_va_addr; cur_addr < end_va_addr; cur_addr += XLAT_BLOCK_SIZE(3)){
+		l3_table_index = XLAT_TABLE_IDX(cur_addr, 3);
+		sub_table[l3_table_index] = INVALID_DESC;
+		// xlat_arch_tlbi_va(cur_addr, ctx->xlat_regime);
+	}
+	xlat_table_dec_regions_count(ctx, sub_table);
 }
 
 #endif /* PLAT_XLAT_TABLES_DYNAMIC */

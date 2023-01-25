@@ -7,6 +7,11 @@
 # Use the GICv2 driver on QEMU by default
 QEMU_USE_GIC_DRIVER	:= QEMU_GICV2
 
+ifneq ($(ENABLE_RME), 0)
+QEMU_USE_GIC_DRIVER	:= QEMU_GICV3
+ENABLE_SPE_FOR_LOWER_ELS := 0
+endif
+
 ifeq (${ARM_ARCH_MAJOR},7)
 # ARMv7 Qemu support in trusted firmware expects the Cortex-A15 model.
 # Qemu Cortex-A15 model does not implement the virtualization extension.
@@ -50,10 +55,16 @@ endif
 
 PLAT_BL_COMMON_SOURCES	:=	${PLAT_QEMU_COMMON_PATH}/qemu_common.c			\
 				${PLAT_QEMU_COMMON_PATH}/qemu_console.c		  \
+				$(PLAT_QEMU_COMMON_PATH)/qemu_plat_attest_token.c	\
+				$(PLAT_QEMU_COMMON_PATH)/qemu_realm_attest_key.c	\
 				drivers/arm/pl011/${ARCH}/pl011_console.S
 
 include lib/xlat_tables_v2/xlat_tables.mk
 PLAT_BL_COMMON_SOURCES	+=	${XLAT_TABLES_LIB_SRCS}
+
+ifeq (${ENABLE_RME},1)
+	BL31_CPPFLAGS   +=  -DPLAT_XLAT_TABLES_DYNAMIC
+endif
 
 ifneq (${TRUSTED_BOARD_BOOT},0)
 
@@ -128,6 +139,7 @@ BL1_SOURCES		+=	drivers/io/io_semihosting.c		\
 				drivers/io/io_storage.c			\
 				drivers/io/io_fip.c			\
 				drivers/io/io_memmap.c			\
+				drivers/arm/smmu/smmu_v3.c		\
 				lib/semihosting/semihosting.c		\
 				lib/semihosting/${ARCH}/semihosting_call.S \
 				${PLAT_QEMU_COMMON_PATH}/qemu_io_storage.c		\
@@ -201,6 +213,7 @@ BL31_SOURCES		+=	lib/cpus/aarch64/aem_generic.S		\
 				plat/common/plat_psci_common.c		\
 				drivers/arm/pl061/pl061_gpio.c		\
 				drivers/gpio/gpio.c			\
+				drivers/arm/smmu/smmu_v3.c		\
 				${PLAT_QEMU_COMMON_PATH}/qemu_pm.c			\
 				${PLAT_QEMU_COMMON_PATH}/topology.c			\
 				${PLAT_QEMU_COMMON_PATH}/aarch64/plat_helpers.S	\

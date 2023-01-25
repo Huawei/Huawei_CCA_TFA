@@ -14,6 +14,19 @@
 #include <plat/common/platform.h>
 #include "qemu_private.h"
 
+#define MAP_GPT_L0	MAP_REGION_FLAT(QEMU_L0_GPT_ADDR_BASE,			\
+					QEMU_L0_GPT_SIZE,			\
+					MT_MEMORY | MT_RW | MT_ROOT)
+
+#define MAP_GPT_L1	MAP_REGION_FLAT(QEMU_L1_GPT_ADDR_BASE,			\
+					QEMU_L1_GPT_SIZE,			\
+					MT_MEMORY | MT_RW | MT_ROOT)
+
+#if ENABLE_RME
+#define MAP_REALM   MAP_REGION_FLAT(RMM_BASE, RMM_SIZE, \
+                    MT_MEMORY | MT_RW | MT_REALM)
+#endif
+
 #define MAP_DEVICE0	MAP_REGION_FLAT(DEVICE0_BASE,			\
 					DEVICE0_SIZE,			\
 					MT_DEVICE | MT_RW | MT_SECURE)
@@ -65,6 +78,7 @@ static const mmap_region_t plat_qemu_mmap[] = {
 #endif
 	{0}
 };
+#define MT_IMAGE_PAS	MT_ROOT
 #endif
 #ifdef IMAGE_BL2
 static const mmap_region_t plat_qemu_mmap[] = {
@@ -72,6 +86,11 @@ static const mmap_region_t plat_qemu_mmap[] = {
 	MAP_FLASH1,
 	MAP_SHARED_RAM,
 	MAP_DEVICE0,
+	MAP_GPT_L0,
+	MAP_GPT_L1,
+#if ENABLE_RME
+	MAP_REALM,
+#endif
 #ifdef MAP_DEVICE1
 	MAP_DEVICE1,
 #endif
@@ -86,11 +105,17 @@ static const mmap_region_t plat_qemu_mmap[] = {
 #endif
 	{0}
 };
+#define MT_IMAGE_PAS	MT_ROOT
 #endif
 #ifdef IMAGE_BL31
 static const mmap_region_t plat_qemu_mmap[] = {
 	MAP_SHARED_RAM,
 	MAP_DEVICE0,
+	MAP_GPT_L0,
+	MAP_GPT_L1,
+#if ENABLE_RME
+	MAP_REALM,
+#endif
 #ifdef MAP_DEVICE1
 	MAP_DEVICE1,
 #endif
@@ -105,6 +130,7 @@ static const mmap_region_t plat_qemu_mmap[] = {
 #endif
 	{0}
 };
+#define MT_IMAGE_PAS	MT_ROOT
 #endif
 #ifdef IMAGE_BL32
 static const mmap_region_t plat_qemu_mmap[] = {
@@ -118,6 +144,22 @@ static const mmap_region_t plat_qemu_mmap[] = {
 #endif
 	{0}
 };
+#define MT_IMAGE_PAS	MT_SECURE
+#endif
+
+#ifdef IMAGE_RMM
+static const mmap_region_t plat_qemu_mmap[] = {
+	MAP_SHARED_RAM,
+	MAP_DEVICE0,
+#ifdef MAP_DEVICE1
+	MAP_DEVICE1,
+#endif
+#ifdef MAP_DEVICE2
+	MAP_DEVICE2,
+#endif
+	{0}
+};
+#define MT_IMAGE_PAS	MT_REALM
 #endif
 
 /*******************************************************************************
@@ -137,16 +179,16 @@ static const mmap_region_t plat_qemu_mmap[] = {
 	{								\
 		mmap_add_region(total_base, total_base,			\
 				total_size,				\
-				MT_MEMORY | MT_RW | MT_SECURE);		\
+				MT_MEMORY | MT_RW | MT_IMAGE_PAS);		\
 		mmap_add_region(code_start, code_start,			\
 				code_limit - code_start,		\
-				MT_CODE | MT_SECURE);			\
+				MT_CODE | MT_IMAGE_PAS);			\
 		mmap_add_region(ro_start, ro_start,			\
 				ro_limit - ro_start,			\
-				MT_RO_DATA | MT_SECURE);		\
+				MT_RO_DATA | MT_IMAGE_PAS);		\
 		mmap_add_region(coh_start, coh_start,			\
 				coh_limit - coh_start,			\
-				MT_DEVICE | MT_RW | MT_SECURE);		\
+				MT_DEVICE | MT_RW | MT_IMAGE_PAS);		\
 		mmap_add(plat_qemu_mmap);				\
 		init_xlat_tables();					\
 									\
@@ -156,6 +198,7 @@ static const mmap_region_t plat_qemu_mmap[] = {
 /* Define EL1 and EL3 variants of the function initialising the MMU */
 #ifdef __aarch64__
 DEFINE_CONFIGURE_MMU_EL(el1)
+DEFINE_CONFIGURE_MMU_EL(el2)
 DEFINE_CONFIGURE_MMU_EL(el3)
 #else
 DEFINE_CONFIGURE_MMU_EL(svc_mon)

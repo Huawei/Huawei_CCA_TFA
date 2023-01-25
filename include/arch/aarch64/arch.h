@@ -96,6 +96,34 @@
 #define ICC_EOIR1_EL1		S3_0_c12_c12_1
 #define ICC_SGI0R_EL1		S3_0_c12_c11_7
 
+#define ICH_VTR_EL2 S3_4_C12_C11_1
+#define ICH_MISR_EL2 S3_4_C12_C11_2
+#define ICH_ELRSR_EL2 S3_4_C12_C11_5
+#define ICH_LR0_EL2 S3_4_C12_C12_0
+#define ICH_LR1_EL2 S3_4_C12_C12_1
+#define ICH_LR2_EL2 S3_4_C12_C12_2
+#define ICH_LR3_EL2 S3_4_C12_C12_3
+#define ICH_LR4_EL2 S3_4_C12_C12_4
+#define ICH_LR5_EL2 S3_4_C12_C12_5
+#define ICH_LR6_EL2 S3_4_C12_C12_6
+#define ICH_LR7_EL2 S3_4_C12_C12_7
+#define ICH_LR8_EL2 S3_4_C12_C13_0
+#define ICH_LR9_EL2 S3_4_C12_C13_1
+#define ICH_LR10_EL2 S3_4_C12_C13_2
+#define ICH_LR11_EL2 S3_4_C12_C13_3
+#define ICH_LR12_EL2 S3_4_C12_C13_4
+#define ICH_LR13_EL2 S3_4_C12_C13_5
+#define ICH_LR14_EL2 S3_4_C12_C13_6
+#define ICH_LR15_EL2 S3_4_C12_C13_7
+#define ICH_AP0R0_EL2 S3_4_C12_C8_0
+#define ICH_AP0R1_EL2 S3_4_C12_C8_1
+#define ICH_AP0R2_EL2 S3_4_C12_C8_2
+#define ICH_AP0R3_EL2 S3_4_C12_C8_3
+#define ICH_AP1R0_EL2 S3_4_C12_C9_0
+#define ICH_AP1R1_EL2 S3_4_C12_C9_1
+#define ICH_AP1R2_EL2 S3_4_C12_C9_2
+#define ICH_AP1R3_EL2 S3_4_C12_C9_3
+
 /*******************************************************************************
  * Definitions for EL2 system registers for save/restore routine
  ******************************************************************************/
@@ -120,6 +148,17 @@
 #define TRFCR_EL2		S3_4_C1_C2_1
 #define PMSCR_EL2		S3_4_C9_C9_0
 #define TFSR_EL2		S3_4_C5_C6_0
+
+/*******************************************************************************
+ * GIC registers bit definitions
+ ******************************************************************************/
+#define ICC_SRE_EL2_SRE     (U(1) << 0)
+#define ICC_SRE_EL2_DFB		(U(1) << 1)
+#define ICC_SRE_EL2_DIB		(U(1) << 2)
+#define ICC_SRE_EL2_ENABLE  (U(1) << 3)
+#define ICC_SRE_EL1_SRE     (U(1) << 0)
+#define ICC_SRE_EL1_DFB		(U(1) << 1)
+#define ICC_SRE_EL1_DIB		(U(1) << 2)
 
 /*******************************************************************************
  * Generic timer memory mapped registers & offsets
@@ -568,6 +607,8 @@
 
 /* CNTHP_CTL_EL2 definitions */
 #define CNTHP_CTL_ENABLE_BIT	(U(1) << 0)
+#define CNTHP_CTL_IT_MASK	(U(1) << 1)
+#define CNTHP_CTL_IT_STAT	(U(1) << 2)
 #define CNTHP_CTL_RESET_VAL	U(0x0)
 
 /* VTTBR_EL2 definitions */
@@ -582,18 +623,31 @@
 #define HCR_AMVOFFEN_SHIFT	U(51)
 #define HCR_AMVOFFEN_BIT	(ULL(1) << HCR_AMVOFFEN_SHIFT)
 #define HCR_TEA_BIT		(ULL(1) << 47)
+#define HCR_FWB_BIT		(ULL(1) << 46)
 #define HCR_API_BIT		(ULL(1) << 41)
 #define HCR_APK_BIT		(ULL(1) << 40)
 #define HCR_E2H_BIT		(ULL(1) << 34)
 #define HCR_HCD_BIT		(ULL(1) << 29)
 #define HCR_TGE_BIT		(ULL(1) << 27)
+#define HCR_TSC_BIT		(ULL(1) << 19)
 #define HCR_RW_SHIFT		U(31)
 #define HCR_RW_BIT		(ULL(1) << HCR_RW_SHIFT)
 #define HCR_TWE_BIT		(ULL(1) << 14)
 #define HCR_TWI_BIT		(ULL(1) << 13)
+#define HCR_BSU_SHIFT	(U(10))
+#define HCR_BSU_RESET_VAL	(ULL(0x0) << HCR_BSU_SHIFT)
+#define HCR_BSU_IS_VAL		(ULL(0x1) << HCR_BSU_SHIFT)
+#define HCR_BSU_OS_VAL		(ULL(0x2) << HCR_BSU_SHIFT)
+#define HCR_BSU_FULL_VAL	(ULL(0x3) << HCR_BSU_SHIFT)
+#define HCR_FB_BIT      (ULL(1) << 9)
+#define HCR_VI_BIT		(ULL(1) << 7)
+#define HCR_VF_BIT		(ULL(1) << 6)
 #define HCR_AMO_BIT		(ULL(1) << 5)
 #define HCR_IMO_BIT		(ULL(1) << 4)
 #define HCR_FMO_BIT		(ULL(1) << 3)
+#define HCR_PTW_BIT		(ULL(1) << 2)
+#define HCR_SWIO_BIT	(ULL(1) << 1)
+#define HCR_VM_BIT		(ULL(1) << 0)
 
 /* ISR definitions */
 #define ISR_A_SHIFT		U(8)
@@ -643,6 +697,51 @@
 /* VTCR_EL2 definitions */
 #define VTCR_RESET_VAL		U(0x0)
 #define VTCR_EL2_MSA		(U(1) << 31)
+#define VTCR_RES1_B31_EL2	(U(1) << 31)
+
+#define VTCR_PS_SHIFT_EL2 16
+#define VTCR_PS_32BIT_EL2 (U(0) << VTCR_PS_SHIFT_EL2)
+#define VTCR_PS_36BIT_EL2 (U(1) << VTCR_PS_SHIFT_EL2)
+#define VTCR_PS_40BIT_EL2 (U(2) << VTCR_PS_SHIFT_EL2)
+#define VTCR_PS_42BIT_EL2 (U(3) << VTCR_PS_SHIFT_EL2)
+#define VTCR_PS_44BIT_EL2 (U(4) << VTCR_PS_SHIFT_EL2)
+#define VTCR_PS_48BIT_EL2 (U(5) << VTCR_PS_SHIFT_EL2)
+#define VTCR_PS_52BIT_EL2 (U(6) << VTCR_PS_SHIFT_EL2)
+
+#define VTCR_TG0_SHIFT_EL2 14
+#define VTCR_TG0_4K_EL2		(U(0) << VTCR_TG0_SHIFT_EL2)
+#define VTCR_TG0_16K_EL2	(U(2) << VTCR_TG0_SHIFT_EL2)
+#define VTCR_TG0_64K_EL2	(U(1) << VTCR_TG0_SHIFT_EL2)
+
+#define VTCR_SH0_SHIFT_EL2 12
+#define VTCR_SH0_IS_EL2		(U(3) << VTCR_SH0_SHIFT_EL2)
+#define VTCR_SH0_OS_EL2		(U(2) << VTCR_SH0_SHIFT_EL2)
+#define VTCR_SH0_NS_EL2		(U(0) << VTCR_SH0_SHIFT_EL2)
+
+#define VTCR_ORGN0_SHIFT_EL2 10
+#define VTCR_ORGN0_NC_EL2		(U(0) << VTCR_ORGN0_SHIFT_EL2)
+#define VTCR_ORGN0_WBMA_EL2		(U(1) << VTCR_ORGN0_SHIFT_EL2)
+#define VTCR_ORGN0_WTNWA_EL2	(U(2) << VTCR_ORGN0_SHIFT_EL2)
+#define VTCR_ORGN0_WBNWA_EL2	(U(3) << VTCR_ORGN0_SHIFT_EL2)
+
+#define VTCR_IRGN0_SHIFT_EL2 8
+#define VTCR_IRGN0_NC_EL2		(U(0) << VTCR_IRGN0_SHIFT_EL2)
+#define VTCR_IRGN0_WBMA_EL2		(U(1) << VTCR_IRGN0_SHIFT_EL2)
+#define VTCR_IRGN0_WTNWA_EL2	(U(2) << VTCR_IRGN0_SHIFT_EL2)
+#define VTCR_IRGN0_WBNWA_EL2	(U(3) << VTCR_IRGN0_SHIFT_EL2)
+
+#define VTCR_SL0_SHIFT_EL2 6
+#define VTCR_SL0_EL2(x) 	((2UL - (uint64_t)(x)) << VTCR_SL0_SHIFT_EL2)
+#define VTCR_SL0_LEVEL0_EL2	VTCR_SL0_EL2(2)
+#define VTCR_SL0_LEVEL1_EL2	VTCR_SL0_EL2(1)
+#define VTCR_SL0_LEVEL2_EL2	VTCR_SL0_EL2(0)
+
+#define VTCR_T0SZ_EL2(x)	(((uint64_t)(64UL - (uint64_t)(x))))
+
+#define VTCR_INIT_FLAGS_EL2 (VTCR_TG0_4K_EL2 | VTCR_SH0_IS_EL2 | \
+							 VTCR_IRGN0_WBMA_EL2 | VTCR_ORGN0_WBMA_EL2 | \
+							 VTCR_RES1_B31_EL2)
+
 
 /* CPSR/SPSR definitions */
 #define DAIF_FIQ_BIT		(U(1) << 0)

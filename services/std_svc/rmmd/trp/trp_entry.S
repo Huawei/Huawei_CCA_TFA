@@ -26,6 +26,29 @@
 	smc	#0
 	.endm
 
+	.macro __init_el2_gicv3
+	mrs x0, ICC_SRE_EL2
+	orr x0, x0, #ICC_SRE_EL2_SRE 		//Set ICC_SRE_EL2.SRE==1
+	bic x0, x0, #ICC_SRE_EL2_ENABLE		//Prevent the guest from touching the GIC
+	msr ICC_SRE_EL2, x0
+	isb
+	.endm
+
+	.macro __init_el2_timers
+	mov x0, #3                          //Enable EL1 physical timers
+	msr cnthctl_el2, x0
+	msr cntvoff_el2, xzr
+	.endm
+
+	.macro __init_el2_hstr              //Disable CP15 traps to EL2
+	msr hstr_el2, xzr
+	.endm
+
+	.macro __init_el2_cptr
+	mov x0, #0x33ff
+	msr cptr_el2, x0                    //Disable copro. traps to EL2
+	.endm
+
 	/* ---------------------------------------------
 	 * Entry point for TRP
 	 * ---------------------------------------------
@@ -57,7 +80,16 @@ trp_head:
 	bl	trp_setup
 
 	bl	trp_main
+
 warm_boot:
+	/* Set the exception vectors */
+	adr x0, rmm_vector
+	msr vbar_el2, x0
+
+	bl 	trp_enable_mmu
+	__init_el2_gicv3
+	__init_el2_timers
+	__init_el2_hstr
 	mov_imm	x0, RMMD_RMI_REQ_COMPLETE
 	mov	x1, xzr
 	smc	#0

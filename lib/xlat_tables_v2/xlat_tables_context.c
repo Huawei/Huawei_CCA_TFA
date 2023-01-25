@@ -61,6 +61,88 @@ void mmap_add_alloc_va(mmap_region_t *mm)
 }
 
 #if PLAT_XLAT_TABLES_DYNAMIC
+void rmm_remap_xlat_table_entry(unsigned long long va_addr, unsigned int attr)
+{
+	VERBOSE("rmm_remap_xlat_table_entry: 0x%llx\n", va_addr);
+
+	xlat_ctx_t *ctx = &tf_xlat_ctx;
+	uint64_t desc;
+	int i = 0;
+	unsigned int l1_table_index = 0, l2_table_index = 0, l3_table_index = 0;
+	uint64_t *base_table;
+
+	for (i = 0; i < 0x4; i++){
+		VERBOSE("L1 page tables desc: 0x%lx\n", ctx->base_table[i]);
+	}
+
+	VERBOSE("ALL availalable tables\n");
+	for (i = 0; i < ctx->tables_num; ++i) {
+		VERBOSE("page tables: %p in use [%d]\n", ctx->tables[i], ctx->tables_mapped_regions[i]);
+	}
+
+	l1_table_index = XLAT_TABLE_IDX(va_addr, 1);
+	desc = ctx->base_table[l1_table_index];
+	if((desc & DESC_MASK) != INVALID_DESC){
+		remap_l2_block_entry(ctx, desc & TABLE_ADDR_MASK, va_addr, attr);
+	}
+	else{
+		ERROR("Wrong L1 table index for 0x%llx\n", va_addr);
+		assert(0);
+	}
+
+	VERBOSE("L1 availalable tables after remapiing\n");
+	for (i = 0; i < ctx->tables_num; ++i) {
+		VERBOSE("L1 page tables: %p in use [%d]\n", ctx->tables[i], ctx->tables_mapped_regions[i]);
+	}
+
+	l1_table_index = XLAT_TABLE_IDX(va_addr, 1);
+	desc = ctx->base_table[l1_table_index];
+	VERBOSE("L1 page table: %p[%d] with 0x%lx\n", ctx->base_table, l1_table_index, desc);
+
+	base_table = (uint64_t*) ( desc & TABLE_ADDR_MASK);
+	l2_table_index = XLAT_TABLE_IDX(va_addr, 2);
+	desc = *(base_table + l2_table_index);
+	VERBOSE("L2 page table: %p[%d] with 0x%lx\n", base_table, l2_table_index, desc);
+
+	base_table = (uint64_t*)(desc & TABLE_ADDR_MASK);
+	l3_table_index = XLAT_TABLE_IDX(va_addr, 3);
+	desc = *(base_table + l3_table_index);
+	VERBOSE("L3 page table: %p[%d] with 0x%lx\n\n", base_table, l3_table_index, desc);
+}
+
+void rmm_undo_remap_xlat_table_entry(unsigned long long va_addr)
+{
+	VERBOSE("rmm_undo_remap_xlat_table_entry: 0x%llx\n", va_addr);
+	xlat_ctx_t *ctx = &tf_xlat_ctx;
+	unsigned int l1_table_index = 0, l2_table_index = 0;
+	uint64_t *base_table;
+	uint64_t desc;
+	int i = 0;
+	VERBOSE("L1 availalable tables\n");
+	for (i = 0; i < ctx->tables_num; ++i) {
+		VERBOSE("page tables: %p in use [%d]\n", ctx->tables[i], ctx->tables_mapped_regions[i]);
+	}
+
+	l1_table_index = XLAT_TABLE_IDX(va_addr, 1);
+	desc = ctx->base_table[l1_table_index];
+
+	base_table = (uint64_t*) ( desc & TABLE_ADDR_MASK);
+	l2_table_index = XLAT_TABLE_IDX(va_addr, 2);
+	desc = *(base_table + l2_table_index);
+
+	if((desc & DESC_MASK) & BLOCK_DESC){
+		undo_remap_l2_block_entry(ctx, (uint64_t)base_table, va_addr);
+	}
+	else{
+		ERROR("Wrong L2 table index for 0x%llx\n", va_addr);
+		assert(0);
+	}
+
+	VERBOSE("L1 availalable tables after undo remaping\n");
+	for (i = 0; i < ctx->tables_num; ++i) {
+		VERBOSE("L1 page tables: %p in use [%d]\n", ctx->tables[i], ctx->tables_mapped_regions[i]);
+	}
+}
 
 int mmap_add_dynamic_region(unsigned long long base_pa, uintptr_t base_va,
 			    size_t size, unsigned int attr)

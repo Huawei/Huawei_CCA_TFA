@@ -19,6 +19,7 @@
 #include <lib/optee_utils.h>
 #include <lib/utils.h>
 #include <plat/common/platform.h>
+#include <lib/gpt_rme/gpt_rme.h>
 
 #include "qemu_private.h"
 
@@ -82,8 +83,48 @@ void bl2_platform_setup(void)
 	/* TODO Initialize timer */
 }
 
+#if ENABLE_RME
+static void qemu_bl2_plat_gpt_setup(void)
+{
+    pas_region_t pas_regions[] = {
+        QEMU_PAS1_GPI_ANY,
+        QEMU_PAS2_GPI_ANY,
+        QEMU_PAS_KERNEL,
+        QEMU_PAS_REALM
+    };
+
+	INFO("qemu bl2 plat gpt setup called!\n");
+    if (gpt_init_l0_tables(GPCCR_PPS_4GB, QEMU_L0_GPT_ADDR_BASE,
+        QEMU_L0_GPT_SIZE) < 0) {
+        ERROR("gpt_init_l0_tables() failed!\n");
+        panic();
+    }
+
+    if (gpt_init_pas_l1_tables(GPCCR_PGS_4K,
+                                QEMU_L1_GPT_ADDR_BASE,
+                                QEMU_L1_GPT_SIZE,
+                                pas_regions,
+                                (unsigned int)(sizeof(pas_regions) /
+                                sizeof(pas_region_t))) < 0) {
+        ERROR("gpt_init_pas_l1_tables() failed!\n");
+        panic();
+    }
+
+    INFO("Enabling Granule Protection Checks\n");
+    if (gpt_enable() < 0) {
+        ERROR("gpt_enable() failed!\n");
+        panic();
+    }
+	INFO("Finish Enabling GPT\n");
+}
+#endif
+
 #ifdef __aarch64__
+#if ENABLE_RME
+#define QEMU_CONFIGURE_BL2_MMU(...)	qemu_configure_mmu_el3(__VA_ARGS__)
+#else
 #define QEMU_CONFIGURE_BL2_MMU(...)	qemu_configure_mmu_el1(__VA_ARGS__)
+#endif
 #else
 #define QEMU_CONFIGURE_BL2_MMU(...)	qemu_configure_mmu_svc_mon(__VA_ARGS__)
 #endif
@@ -95,6 +136,10 @@ void bl2_plat_arch_setup(void)
 			      BL_CODE_BASE, BL_CODE_END,
 			      BL_RO_DATA_BASE, BL_RO_DATA_END,
 			      BL_COHERENT_RAM_BASE, BL_COHERENT_RAM_END);
+
+#if ENABLE_RME
+	qemu_bl2_plat_gpt_setup();
+#endif
 }
 
 /*******************************************************************************

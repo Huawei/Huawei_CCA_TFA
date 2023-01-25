@@ -24,15 +24,22 @@ SECTIONS
 	. = RMM_BASE;
 
 	.text : {
+		__TEXT_START__ = .;
 		*(.head.text)
 		. = ALIGN(8);
 		*(.text*)
+		*(.vectors)
+		. = ALIGN(PAGE_SIZE_4K);
+		__TEXT_END__ = .;
 	} >RAM
 
 	. = ALIGN(PAGE_SIZE_4K);
 
 	.rodata : {
+		__RODATA_START__ = .;
 		*(.rodata*)
+		. = ALIGN(PAGE_SIZE_4K);
+		__RODATA_END__ = .;
 	} >RAM
 
 	. = ALIGN(PAGE_SIZE_4K);

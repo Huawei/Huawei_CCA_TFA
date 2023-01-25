@@ -147,7 +147,7 @@ endif
 CTX_INCLUDE_EL2_REGS := 1
 CTX_INCLUDE_AARCH32_REGS := 0
 ARM_ARCH_MAJOR := 8
-ARM_ARCH_MINOR := 6
+ARM_ARCH_MINOR := 2
 endif
 
 # USE_SPINLOCK_CAS requires AArch64 build
@@ -1077,6 +1077,7 @@ $(eval $(call assert_numerics,\
         ENABLE_FEAT_VHE \
         ENABLE_MPAM_FOR_LOWER_ELS \
         ENABLE_RME \
+        RME_DEBUG \
         ENABLE_TRF_FOR_NS \
         FW_ENC_STATUS \
         NR_OF_FW_BANKS \
@@ -1128,6 +1129,7 @@ $(eval $(call add_defines,\
         ENABLE_PMF \
         ENABLE_PSCI_STAT \
         ENABLE_RME \
+        RME_DEBUG \
         ENABLE_RUNTIME_INSTRUMENTATION \
         ENABLE_SME_FOR_NS \
         ENABLE_SME_FOR_SWD \
@@ -1204,6 +1206,7 @@ $(eval $(call add_defines,\
         FEATURE_DETECTION \
         TWED_DELAY \
         ENABLE_FEAT_TWED \
+        ENABLE_SMMU \
 )))
 
 ifeq (${SANITIZE_UB},trap)

@@ -5,6 +5,7 @@ cscope.*
 *~
 .project
 .cproject
+.vscode
 
 # Ignore build directory
 build/

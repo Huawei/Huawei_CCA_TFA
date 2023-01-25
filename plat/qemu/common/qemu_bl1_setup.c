@@ -11,6 +11,7 @@
 #include <arch.h>
 #include <arch_helpers.h>
 #include <common/bl_common.h>
+#include <drivers/arm/smmu_v3.h>
 
 #include "qemu_private.h"
 
@@ -59,4 +60,8 @@ void bl1_plat_arch_setup(void)
 void bl1_platform_setup(void)
 {
 	plat_qemu_io_setup();
+#if ENABLE_SMMU
+	INFO("BL1: SMMUV3 init SMMU_S\n");
+	smmuv3_security_init(PLAT_QEMU_SMMUV3_BASE);
+#endif
 }
