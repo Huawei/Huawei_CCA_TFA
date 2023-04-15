@@ -11,6 +11,7 @@
 
 #include <platform_def.h>
 
+#include <arch_features.h>
 #include <arch_helpers.h>
 #include <common/bl_common.h>
 #include <common/debug.h>
@@ -20,30 +21,31 @@
 #include <lib/optee_utils.h>
 #include <lib/utils.h>
 #include <plat/common/platform.h>
+#include <lib/gpt_rme/gpt_rme.h>
 
 #include "qemu_private.h"
 
 #define MAP_BL2_TOTAL		MAP_REGION_FLAT(			\
 					bl2_tzram_layout.total_base,	\
 					bl2_tzram_layout.total_size,	\
-					MT_MEMORY | MT_RW | MT_SECURE)
+					MT_MEMORY | MT_RW | EL3_PAS)
 
 #define MAP_BL2_RO		MAP_REGION_FLAT(			\
 					BL_CODE_BASE,			\
 					BL_CODE_END - BL_CODE_BASE,	\
-					MT_CODE | MT_SECURE),		\
+					MT_CODE | EL3_PAS),		\
 				MAP_REGION_FLAT(			\
 					BL_RO_DATA_BASE,		\
 					BL_RO_DATA_END			\
 						- BL_RO_DATA_BASE,	\
-					MT_RO_DATA | MT_SECURE)
+					MT_RO_DATA | EL3_PAS)
 
 #if USE_COHERENT_MEM
 #define MAP_BL_COHERENT_RAM	MAP_REGION_FLAT(			\
 					BL_COHERENT_RAM_BASE,		\
 					BL_COHERENT_RAM_END		\
 						- BL_COHERENT_RAM_BASE,	\
-					MT_DEVICE | MT_RW | MT_SECURE)
+					MT_DEVICE | MT_RW | EL3_PAS)
 #endif
 
 /* Data structure which holds the extents of the trusted SRAM for BL2 */
@@ -105,6 +107,46 @@ void bl2_platform_setup(void)
 	/* TODO Initialize timer */
 }
 
+#if ENABLE_RME
+static void qemu_bl2_plat_gpt_setup(void)
+{
+	/*
+	 * The GPT library might modify the gpt regions structure to optimize
+	 * the layout, so the array cannot be constant.
+	 */
+	pas_region_t pas_regions[] = {
+		QEMU_PAS1_GPI_ANY,
+		QEMU_PAS2_GPI_ANY,
+		QEMU_PAS_KERNEL,
+		QEMU_PAS_REALM
+	};
+
+	/* Initialize entire protected space to GPT_GPI_ANY. */
+	if (gpt_init_l0_tables(GPCCR_PPS_64GB, QEMU_L0_GPT_ADDR_BASE,
+		QEMU_L0_GPT_SIZE) < 0) {
+		ERROR("gpt_init_l0_tables() failed!\n");
+		panic();
+	}
+
+	/* Carve out defined PAS ranges. */
+	if (gpt_init_pas_l1_tables(GPCCR_PGS_4K,
+				   QEMU_L1_GPT_ADDR_BASE,
+				   QEMU_L1_GPT_SIZE,
+				   pas_regions,
+				   (unsigned int)(sizeof(pas_regions) /
+				   sizeof(pas_region_t))) < 0) {
+		ERROR("gpt_init_pas_l1_tables() failed!\n");
+		panic();
+	}
+
+	INFO("Enabling Granule Protection Checks\n");
+	if (gpt_enable() < 0) {
+		ERROR("gpt_enable() failed!\n");
+		panic();
+	}
+}
+#endif /* ENABLE_RME */
+
 void bl2_plat_arch_setup(void)
 {
 	const mmap_region_t bl_regions[] = {
@@ -119,10 +161,20 @@ void bl2_plat_arch_setup(void)
 	setup_page_tables(bl_regions, plat_qemu_get_mmap());
 
 #ifdef __aarch64__
+#if ENABLE_RME
+	/* BL2 runs in EL3 when RME enabled. */
+	assert(get_armv9_2_feat_rme_support() != 0U);
+	enable_mmu_el3(0);
+
+	/* Initialise and enable granule protection after MMU. */
+	qemu_bl2_plat_gpt_setup();
+#else /* !ENABLE_RME */
 	enable_mmu_el1(0);
-#else
+#endif
+#else /* !__aarch64__ */
 	enable_mmu_svc_mon(0);
 #endif
+
 }
 
 /*******************************************************************************

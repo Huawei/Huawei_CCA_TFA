@@ -8,7 +8,10 @@ ifneq (${ARCH},aarch64)
         $(error "Error: RMMD is only supported on aarch64.")
 endif
 
+# If RMM is not defined, Test Realm Payload (TRP) needs to be built.
+ifeq (${RMM},)
 include services/std_svc/rmmd/trp/trp.mk
+endif
 
 RMMD_SOURCES	+=	$(addprefix services/std_svc/rmmd/,	\
 			${ARCH}/rmmd_helpers.S			\

@@ -18,7 +18,10 @@ static uintptr_t qemu_rdistif_base_addrs[PLATFORM_CORE_COUNT];
 
 static unsigned int qemu_mpidr_to_core_pos(unsigned long mpidr)
 {
-	return (unsigned int)plat_core_pos_by_mpidr(mpidr);
+	/* TODO: QEMU virt.c define CPU per cluster as 8 or 16, which conflicts
+	 * with TFA's PLATFORM_MAX_CPUS_PER_CLUSTER=4. This is a temporary
+	 * workaround to bypass plat_core_pos_by_mpidr's check. */
+	return mpidr;
 }
 
 static const gicv3_driver_data_t qemu_gicv3_driver_data = {

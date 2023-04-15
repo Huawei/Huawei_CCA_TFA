@@ -67,11 +67,29 @@ static bl_mem_params_node_t bl2_mem_params_descs[] = {
 
 # ifdef QEMU_LOAD_BL32
 	  .next_handoff_image_id = BL32_IMAGE_ID,
+# elif ENABLE_RME
+	  .next_handoff_image_id = RMM_IMAGE_ID,
 # else
 	  .next_handoff_image_id = BL33_IMAGE_ID,
 # endif
 	},
 #endif /* __aarch64__ */
+
+# if ENABLE_RME
+	/* Fill RMM related information */
+	{
+		.image_id = RMM_IMAGE_ID,
+		SET_STATIC_PARAM_HEAD(ep_info, PARAM_EP,
+			VERSION_2, entry_point_info_t, EP_REALM | EXECUTABLE),
+		.ep_info.pc = RMM_BASE,
+		SET_STATIC_PARAM_HEAD(image_info, PARAM_EP,
+			VERSION_2, image_info_t, 0),
+		.image_info.image_base = RMM_BASE,
+		.image_info.image_max_size = RMM_LIMIT - RMM_BASE,
+		.next_handoff_image_id = BL33_IMAGE_ID,
+	},
+# endif
+
 # ifdef QEMU_LOAD_BL32
 
 #ifdef __aarch64__
@@ -95,7 +113,11 @@ static bl_mem_params_node_t bl2_mem_params_descs[] = {
 	  .image_info.image_base = BL32_BASE,
 	  .image_info.image_max_size = BL32_LIMIT - BL32_BASE,
 
-	  .next_handoff_image_id = BL33_IMAGE_ID,
+# if ENABLE_RME
+		.next_handoff_image_id = RMM_IMAGE_ID,
+# else
+		.next_handoff_image_id = BL33_IMAGE_ID,
+# endif
 	},
 
 	/*

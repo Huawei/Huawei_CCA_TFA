@@ -150,7 +150,10 @@ CTX_INCLUDE_EL2_REGS := 1
 CTX_INCLUDE_AARCH32_REGS := 0
 ARM_ARCH_MAJOR := 8
 ARM_ARCH_MINOR := 5
+# QEMU doesn't support CNTPOFF_EL2 yet.
+ifneq (${ARCH}-${PLAT},aarch64-qemu)
 ENABLE_FEAT_ECV = 1
+endif
 ENABLE_FEAT_FGT = 1
 
 # RME enables CSV2_2 extension by default.

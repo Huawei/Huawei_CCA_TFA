@@ -7,6 +7,11 @@
 # Use the GICv2 driver on QEMU by default
 QEMU_USE_GIC_DRIVER	:= QEMU_GICV2
 
+ifneq ($(ENABLE_RME), 0)
+QEMU_USE_GIC_DRIVER    := QEMU_GICV3
+ENABLE_SPE_FOR_LOWER_ELS := 0
+endif
+
 ifeq (${ARM_ARCH_MAJOR},7)
 # ARMv7 Qemu support in trusted firmware expects the Cortex-A15 model.
 # Qemu Cortex-A15 model does not implement the virtualization extension.
@@ -196,6 +201,12 @@ BL1_SOURCES		+=	drivers/io/io_encrypted.c
 BL2_SOURCES		+=	drivers/io/io_encrypted.c
 endif
 
+ifeq (${ENABLE_RME},1)
+BL31_SOURCES	+=  $(PLAT_QEMU_COMMON_PATH)/qemu_plat_attest_token.c  \
+				$(PLAT_QEMU_COMMON_PATH)/qemu_realm_attest_key.c
+endif
+
+
 # Include GICv2 driver files
 include drivers/arm/gic/v2/gicv2.mk
 QEMU_GICV2_SOURCES	:=	${GICV2_SOURCES}			\
@@ -307,7 +318,9 @@ ENABLE_FEAT_RNG			:= 2
 # Later QEMU versions support SME and SVE.
 ifneq (${ARCH},aarch32)
 	ENABLE_SVE_FOR_NS	:= 2
-	ENABLE_SME_FOR_NS	:= 2
+	ifeq (${ENABLE_RME},0)
+		ENABLE_SME_FOR_NS	:= 2
+	endif
 endif
 
 qemu_fw.bios: bl1 fip
